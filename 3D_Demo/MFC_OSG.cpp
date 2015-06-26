@@ -144,7 +144,7 @@ osg::MatrixTransform* cOSG::createCylinder()
 }
 osg::MatrixTransform* cOSG::createBox()
 {
-	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("1.jpg");
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
 	if (!image.get())
 		return NULL;
 
@@ -171,25 +171,21 @@ osg::MatrixTransform* cOSG::createBox()
 	//stateset->setTextureAttributeAndModes(1,texgen.get(),osg::StateAttribute::ON);
 	stateset->setAttribute(texenv.get());
 
-// 	osg::ref_ptr<osg::BlendFunc> blendFunc = new osg::BlendFunc();  // blend func    
-// 	blendFunc->setSource(osg::BlendFunc::SRC_ALPHA);       
-// 	blendFunc->setDestination(osg::BlendFunc::ONE_MINUS_SRC_ALPHA);        
-// 	stateset->setAttributeAndModes( blendFunc );
-// 	stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);  
-
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	geode->addDrawable( doorShape.get() );
 
 	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
-	trans->setMatrix(osg::Matrix::translate(0.0, 0.0, 3.0));
+	trans->setMatrix(osg::Matrix::translate(0.0, 2.0, -2.0));
 	trans->addChild( geode.get() );
+
+	geode->setNodeMask(CastsShadowTraversalMask);//ÒõÓ°
 	geode->setName("Box");
 	return trans.release();
 }
 
 osg::MatrixTransform* cOSG::createSphere(float radius)  
 {  
-	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("1.jpg");
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
 	if (!image.get())
 		return NULL;
 
@@ -238,23 +234,24 @@ osg::MatrixTransform* cOSG::createSphere(float radius)
 
 }
 
-osg::MatrixTransform* cOSG::createXXX()  
+osg::MatrixTransform* cOSG::createPrism()  
 {  
-	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("1.jpg");
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
 	if (!image.get())
 		return NULL; 
 
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;//ÁâÐÎÖù
 	geode->addDrawable( createSquare(osg::Vec3(2.0f,0.0f,0.f),osg::Vec3(-2.0f,1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
 	geode->addDrawable( createSquare(osg::Vec3(2.0f,0.0f,0.f),osg::Vec3(-2.0f,-1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
-	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(2.0f,1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
-	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(2.0f,-1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
+	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(0.0f,0.0f,3.0f),osg::Vec3(2.0f,1.0f,0.0f), image) );
+	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(0.0f,0.0f,3.0f),osg::Vec3(2.0f,-1.0f,0.0f), image) );
 
 	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
-	trans->setMatrix(osg::Matrix::translate(0.0, 0.0, 8.0));
+	trans->setMatrix(osg::Matrix::translate(0.0, 3.0, 5.0));
 	trans->addChild( geode.get() );
 
-	geode->setName("XXX");
+	geode->setName("Prism");
+	geode->setNodeMask(CastsShadowTraversalMask);
 
 	return trans.release();
 
@@ -291,10 +288,13 @@ void cOSG::InitSceneGraph(void)
 	//mRoot->addChild(createLights());
 	//mRoot->addChild(createXXX());
 	osg::ref_ptr<osg::Node> floor = osgDB::readNodeFile("floor.3ds");
-	floor->setNodeMask(ReceivesShadowTraversalMask);
+	if(floor)
+		floor->setNodeMask(ReceivesShadowTraversalMask);
 	mShadowedSceneRoot->addChild(floor.get());
 
 	mShadowedSceneRoot->addChild(createSphere(1));
+	mShadowedSceneRoot->addChild(createPrism());
+	mShadowedSceneRoot->addChild(createBox());
 	mShadowedSceneRoot->addChild(createLights());
 
 }

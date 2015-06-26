@@ -48,7 +48,7 @@ public:
 	osg::MatrixTransform* createBox();
 	osg::MatrixTransform* createSphere(float radius);
 
-	osg::MatrixTransform* createXXX();
+	osg::MatrixTransform* createPrism();
 
 
 private:
