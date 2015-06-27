@@ -3,8 +3,11 @@
 #include "stdafx.h"
 #include "MFC_OSG.h"
 #include "NodePick.h"
+#include "FindNodeVisitor.h"
+#include "TraverseNodeVisitor.h"
+#include "Skybox.h"
 
-
+//阴影投射掩码
 static int ReceivesShadowTraversalMask = 0x1;
 static int CastsShadowTraversalMask = 0x2;
 
@@ -48,33 +51,71 @@ void cOSG::InitManipulators(void)
     // Init the switcher to the first manipulator (in this case the only manipulator)
     keyswitchManipulator->selectMatrixManipulator(0);  // Zero based index Value
 }
+//创建方向光源
+osg::Node* cOSG::createDirectionalLight()
+{
+	osg::Group* lightGroup = new osg::Group;
+	// create a directional light.
+	osg::Light* myLight = new osg::Light;
+	myLight->setLightNum(0);
+	myLight->setPosition(osg::Vec4(1,1,1,0.0f));//方向 1，1，1
+	myLight->setAmbient(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
+	myLight->setDiffuse(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
+	myLight->setSpecular(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
 
-osg::Node* cOSG::createLights()
+	osg::LightSource* lightS = new osg::LightSource;    
+	lightS->setLight(myLight);
+	lightS->setLocalStateSetModes(osg::StateAttribute::ON);
+	//lightS1->setStateSetModes(*rootStateSet,osg::StateAttribute::ON);
+	lightGroup->addChild(lightS);
+
+	return lightGroup;
+}
+//创建点光源
+osg::Node* cOSG::createPointLight()
 {
 	osg::Group* lightGroup = new osg::Group;
 
-	// create a spot light.
-	myLight1 = new osg::Light;
-	myLight1->setLightNum(0);
-	myLight1->setPosition(osg::Vec4(0,10,0,1.0f));
-	myLight1->setAmbient(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
-	myLight1->setDiffuse(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
-	myLight1->setSpecular(osg::Vec4(1,0,0,1));
-	myLight1->setSpotCutoff(100.0f);
-	myLight1->setSpotExponent(50.0f);
-	myLight1->setDirection(osg::Vec3(1.0f,1.0f,-1.0f));
+	osg::Light* myLight = new osg::Light;
+	myLight->setLightNum(1);
+	myLight->setPosition(osg::Vec4(0,20,0,1.0f));
+	myLight->setAmbient(osg::Vec4(0.5f,0.5f,0.5f,1.0f));
+	myLight->setDiffuse(osg::Vec4(0.5f,0.5f,0.5f,1.0f));
+	myLight->setSpecular(osg::Vec4(1,0,0,1));
 
-	osg::LightSource* lightS1 = new osg::LightSource;    
-	lightS1->setLight(myLight1);
-	lightS1->setLocalStateSetModes(osg::StateAttribute::ON); 
-
+	osg::LightSource* lightS = new osg::LightSource;    
+	lightS->setLight(myLight);
+	lightS->setLocalStateSetModes(osg::StateAttribute::ON);
 	//lightS1->setStateSetModes(*rootStateSet,osg::StateAttribute::ON);
-	lightGroup->addChild(lightS1);
+	lightGroup->addChild(lightS);
+
+	return lightGroup;
+}
+//创建一个聚光灯，控制移动
+osg::Node* cOSG::createMoveLight()
+{
+	osg::Group* lightGroup = new osg::Group;
+	// create a spot light.
+	osg::Light* myLight = new osg::Light;
+	myLight->setLightNum(2);
+	myLight->setPosition(osg::Vec4(0,0,0,1.0f));
+	myLight->setAmbient(osg::Vec4(10.0f,0.0f,0.0f,1.0f));
+	myLight->setDiffuse(osg::Vec4(10.0f,0.0f,0.0f,1.0f));
+	myLight->setSpecular(osg::Vec4(1,0,0,1));
+	myLight->setSpotCutoff(50.0f);
+	myLight->setSpotExponent(50.0f);
+	myLight->setDirection(osg::Vec3(0.0f,-1.0f,0.0f));
+
+	osg::LightSource* lightS = new osg::LightSource;    
+	lightS->setLight(myLight);
+	lightS->setLocalStateSetModes(osg::StateAttribute::ON);
+	//lightS1->setStateSetModes(*rootStateSet,osg::StateAttribute::ON);
+	lightGroup->addChild(lightS);
 
 	return lightGroup;
 }
 
-/** create quad at specified position. */
+//创建quad
 osg::Drawable* cOSG::createSquare(const osg::Vec3& corner,const osg::Vec3& width,const osg::Vec3& height, osg::Image* image)
 {
 	// set up the Geometry.
@@ -86,11 +127,10 @@ osg::Drawable* cOSG::createSquare(const osg::Vec3& corner,const osg::Vec3& width
 	(*coords)[2] = corner+width+height;
 	(*coords)[3] = corner+height;
 
-
 	geom->setVertexArray(coords);
 
 	osg::Vec3Array* norms = new osg::Vec3Array(1);
-	(*norms)[0] = width^height;
+	(*norms)[0] = height^width;
 	(*norms)[0].normalize();
 
 	geom->setNormalArray(norms);
@@ -105,135 +145,230 @@ osg::Drawable* cOSG::createSquare(const osg::Vec3& corner,const osg::Vec3& width
 
 	geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
 
-// 	if (image)
-// 	{
-// 		osg::StateSet* stateset = new osg::StateSet;
-// 		osg::Texture2D* texture = new osg::Texture2D;
-// 		texture->setImage(image);
-// 		stateset->setTextureAttributeAndModes(0,texture,osg::StateAttribute::ON);
-// 		geom->setStateSet(stateset);
-// 	}
+	if (image)
+	{
+		osg::StateSet* stateset = new osg::StateSet;
+		osg::Texture2D* texture = new osg::Texture2D;
+		texture->setImage(image);
+		stateset->setTextureAttributeAndModes(0,texture,osg::StateAttribute::ON);
+		geom->setStateSet(stateset);
+	}
 
 	return geom;
 }
 
-
+//创建圆柱
 osg::MatrixTransform* cOSG::createCylinder()
 {
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
+	if (!image.get())
+		return NULL;
+
+	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D(image.get());
+
 	osg::ref_ptr<osg::ShapeDrawable> doorShape =
 		new osg::ShapeDrawable( new osg::Cylinder(osg::Vec3(0.0f, 0.0f, 0.0f), 2.0f, 3.0f) );
-	doorShape->setColor( osg::Vec4(1.0f, 0.0f, 1.0f, 1.0f) );   // alpha value
-
-	osg::StateSet* stateset = doorShape->getOrCreateStateSet();
-
-	// 	osg::ref_ptr<osg::BlendFunc> blendFunc = new osg::BlendFunc();  // blend func    
-	// 	blendFunc->setSource(osg::BlendFunc::SRC_ALPHA);       
-	// 	blendFunc->setDestination(osg::BlendFunc::ONE_MINUS_SRC_ALPHA);        
-	// 	stateset->setAttributeAndModes( blendFunc );
-	// 	stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);  
+	//doorShape->setColor( osg::Vec4(1.0f, 0.0f, 1.0f, 1.0f) );   // alpha value
 
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	geode->addDrawable( doorShape.get() );
 
+	//设置模型材质
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	geode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+
+	geode->getOrCreateStateSet()->setTextureAttributeAndModes(0,texture.get(), osg::StateAttribute::ON);
+
+	//设置矩阵，用来变换模型
 	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
-	trans->setMatrix(osg::Matrix::translate(0, 0.0, 0.0));
+	trans->setMatrix(osg::Matrix::translate(4.0, 4.0, 6.0));
 	trans->addChild( geode.get() );
+
+	geode->setNodeMask(CastsShadowTraversalMask);
 
 	geode->setName("Cylinder");
 	return trans.release();
 }
+
+//创建立方体
 osg::MatrixTransform* cOSG::createBox()
 {
 	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
 	if (!image.get())
 		return NULL;
 
-	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D();
-	texture->setImage(image.get());
-
-	//设置自动生成纹理坐标
-	osg::ref_ptr<osg::TexGen> texgen=new osg::TexGen();
-	texgen->setMode(osg::TexGen::SPHERE_MAP);
-
-	//设置纹理环境，模式为BLEND
-	osg::ref_ptr<osg::TexEnv> texenv=new osg::TexEnv;
-	texenv->setMode(osg::TexEnv::Mode::ADD);
-	texenv->setColor(osg::Vec4(1.0,0.0,0.0,1.0));
+	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D(image.get());
 
 	osg::ref_ptr<osg::ShapeDrawable> doorShape =
 		new osg::ShapeDrawable( new osg::Box(osg::Vec3(0.0f, 0.0f, 0.0f), 2.0f, 2.0f, 2.0f) );
-	doorShape->setColor( osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f) );   // alpha value
+	//doorShape->setColor( osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f) );   // alpha value
 
 	osg::StateSet* stateset = doorShape->getOrCreateStateSet();
 
-	//stateset->setTextureAttributeAndModes(1,texture.get(),osg::StateAttribute::ON);
-	stateset->setAttributeAndModes(texture.get());
-	//stateset->setTextureAttributeAndModes(1,texgen.get(),osg::StateAttribute::ON);
-	stateset->setAttribute(texenv.get());
+	stateset->setTextureAttributeAndModes( 0, texture.get(), osg::StateAttribute::ON);
 
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	geode->addDrawable( doorShape.get() );
 
+	// material
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	geode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+
+	//设置矩阵，用来变换模型
 	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
-	trans->setMatrix(osg::Matrix::translate(0.0, 2.0, -2.0));
+	trans->setMatrix(osg::Matrix::translate(0.0, 2.0, -4.0));
 	trans->addChild( geode.get() );
 
 	geode->setNodeMask(CastsShadowTraversalMask);//阴影
 	geode->setName("Box");
 	return trans.release();
 }
-
+//创建球体
 osg::MatrixTransform* cOSG::createSphere(float radius)  
 {  
-	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("tree.png");
 	if (!image.get())
 		return NULL;
 
-	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D();
-	texture->setImage(image.get());
-
-	//设置自动生成纹理坐标
-	osg::ref_ptr<osg::TexGen> texgen=new osg::TexGen();
-	texgen->setMode(osg::TexGen::SPHERE_MAP);
-
-	//设置纹理环境，模式为BLEND
-	osg::ref_ptr<osg::TexEnv> texenv=new osg::TexEnv;
-	texenv->setMode(osg::TexEnv::Mode::REPLACE);
-	texenv->setColor(osg::Vec4(0.6,0.6,0.6,0.0));
+	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D(image.get());
 
 	osg::ref_ptr<osg::ShapeDrawable> doorShape =
 		new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0.0,0.0,0.0), radius) );
 	//doorShape->setColor( osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f) );   // alpha value
 
 	osg::StateSet* stateset = doorShape->getOrCreateStateSet();
-
-	//stateset->setTextureAttributeAndModes(1,texture.get(),osg::StateAttribute::ON);
-	//stateset->setTextureAttributeAndModes(1,texgen.get(),osg::StateAttribute::ON);
-	//stateset->setTextureAttribute(1,texenv.get());
-	stateset->setAttributeAndModes(texture.get());
-	stateset->setAttribute(texenv.get());
-
-	// 	osg::ref_ptr<osg::BlendFunc> blendFunc = new osg::BlendFunc();  // blend func    
-	// 	blendFunc->setSource(osg::BlendFunc::SRC_ALPHA);       
-	// 	blendFunc->setDestination(osg::BlendFunc::ONE_MINUS_SRC_ALPHA);        
-	// 	stateset->setAttributeAndModes( blendFunc );
-	// 	stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);  
+	stateset->setTextureAttributeAndModes( 0, texture.get(), osg::StateAttribute::ON);
 
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
 	geode->addDrawable( doorShape.get() );
-
 	geode->setNodeMask(CastsShadowTraversalMask);//阴影
 
+	// material
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	geode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+
+	//设置矩阵，用来变换模型
 	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
-	trans->setMatrix(osg::Matrix::translate(0.0, 1, 0.0));
+	trans->setMatrix(osg::Matrix::translate(0.0, 4, -2.0));
 	trans->addChild( geode.get() );
 
 	geode->setName("Sphere");
-
 	return trans.release();
 
 }
+//创建圆锥
+osg::MatrixTransform* cOSG::createCone(float radius, float height)  
+{  
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
+	if (!image.get())
+		return NULL;
 
+	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D(image.get());
+
+	osg::ref_ptr<osg::ShapeDrawable> doorShape =
+		new osg::ShapeDrawable( new osg::Cone(osg::Vec3(0.0,0.0,0.0), radius,height) );
+	//doorShape->setColor( osg::Vec4(0.0f, 1.0f, 1.0f, 1.0f) );   // alpha value
+
+	osg::StateSet* stateset = doorShape->getOrCreateStateSet();
+	stateset->setTextureAttributeAndModes( 0, texture.get(), osg::StateAttribute::ON);
+
+	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+	geode->addDrawable( doorShape.get() );
+	geode->setNodeMask(CastsShadowTraversalMask);//阴影
+
+	// material
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	geode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+
+	//设置矩阵，用来变换模型
+	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
+	trans->setMatrix(osg::Matrix::translate(-3, 4, -2.0));
+	trans->addChild( geode.get() );
+
+	geode->setName("Cone");
+	return trans.release();
+
+}
+//创建圆环
+osg::MatrixTransform* cOSG::createTorusGeode(float MinorRadius, float MajorRadius)
+{
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
+	if (!image.get())
+		return NULL;
+	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D(image.get());
+
+	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+	osg::Geometry *geometry = new osg::Geometry;
+	osg::Vec3Array *vertexArray = new osg::Vec3Array;
+	osg::Vec3Array *normalArray = new osg::Vec3Array;
+
+	for (int i=0; i<20; i++ )										// Stacks
+	{
+		for (int j=-1; j<20; j++)									// Slices
+		{
+			float wrapFrac = (j%20)/(float)20;
+			float phi = 2* osg::PI*wrapFrac;
+			float sinphi = float(sin(phi));
+			float cosphi = float(cos(phi));
+
+			float r = MajorRadius + MinorRadius*cosphi;
+
+			normalArray->push_back(osg::Vec3(float(sin(2* osg::PI*(i%20+wrapFrac)/(float)20))*cosphi, sinphi, float(cos(2* osg::PI*(i%20+wrapFrac)/(float)20))*cosphi));
+			vertexArray->push_back(osg::Vec3(float(sin(2* osg::PI*(i%20+wrapFrac)/(float)20))*r,MinorRadius*sinphi,float(cos(2* osg::PI*(i%20+wrapFrac)/(float)20))*r));
+			normalArray->push_back(osg::Vec3(float(sin(2* osg::PI*(i+1%20+wrapFrac)/(float)20))*cosphi, sinphi, float(cos(2* osg::PI*(i+1%20+wrapFrac)/(float)20))*cosphi));
+			vertexArray->push_back(osg::Vec3(float(sin(2* osg::PI*(i+1%20+wrapFrac)/(float)20))*r,MinorRadius*sinphi,float(cos(2* osg::PI*(i+1%20+wrapFrac)/(float)20))*r));
+		}
+	}
+
+	geometry->setVertexArray(vertexArray);
+	geometry->setNormalArray(normalArray);
+	geometry->setNormalBinding(osg::Geometry::BIND_OVERALL);
+	geometry->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::TRIANGLE_STRIP, 0, vertexArray->size()));
+
+	//设置自动生成纹理坐标
+	osg::ref_ptr<osg::TexGen> texgen=new osg::TexGen();
+	texgen->setMode(osg::TexGen::EYE_LINEAR);
+
+	geometry->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texture.get(), osg::StateAttribute::ON);
+	geometry->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texgen.get(), osg::StateAttribute::ON);
+
+	geode->addDrawable(geometry);
+
+	//设置矩阵，用来变换模型
+	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
+	trans->setMatrix(osg::Matrix::translate(-5.0, 3.0, 5.0));
+	trans->addChild( geode.get() );
+
+	geode->setName("Torus");
+	geode->setNodeMask(CastsShadowTraversalMask);
+
+	// material
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	geode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+
+	return trans.release();
+}
+//创建菱形柱
 osg::MatrixTransform* cOSG::createPrism()  
 {  
 	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
@@ -241,11 +376,20 @@ osg::MatrixTransform* cOSG::createPrism()
 		return NULL; 
 
 	osg::ref_ptr<osg::Geode> geode = new osg::Geode;//菱形柱
-	geode->addDrawable( createSquare(osg::Vec3(2.0f,0.0f,0.f),osg::Vec3(-2.0f,1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
-	geode->addDrawable( createSquare(osg::Vec3(2.0f,0.0f,0.f),osg::Vec3(-2.0f,-1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
-	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(0.0f,0.0f,3.0f),osg::Vec3(2.0f,1.0f,0.0f), image) );
-	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(0.0f,0.0f,3.0f),osg::Vec3(2.0f,-1.0f,0.0f), image) );
+	geode->addDrawable( createSquare(osg::Vec3(2.0f,0.0f,0.f),osg::Vec3(0.0f,0.0f,3.0f),osg::Vec3(-2.0f,1.0f,0.0f), image) );
+	geode->addDrawable( createSquare(osg::Vec3(2.0f,0.0f,0.f),osg::Vec3(0.0f,0.0f,3.0f),osg::Vec3(-2.0f,-1.0f,0.0f), image) );
+	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(2.0f,1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
+	geode->addDrawable( createSquare(osg::Vec3(-2.0f,0.0f,0.f),osg::Vec3(2.0f,-1.0f,0.0f),osg::Vec3(0.0f,0.0f,3.0f), image) );
 
+	// material
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	geode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+
+	//设置矩阵，用来变换模型
 	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
 	trans->setMatrix(osg::Matrix::translate(0.0, 3.0, 5.0));
 	trans->addChild( geode.get() );
@@ -259,46 +403,66 @@ osg::MatrixTransform* cOSG::createPrism()
 
 void cOSG::InitSceneGraph(void)
 {
-    // Init the main Root Node/Group
-    //mRoot  = new osg::Group;
-	mShadowedSceneRoot = new osgShadow::ShadowedScene;
+    //总根节点
+    mRoot  = new osg::Group;
+	//创建天空盒
+	mRoot->addChild(createSkyBox());
 
+	//总阴影根节点，所有带阴影的模型都放在这个节点下
+	mShadowedSceneRoot = new osgShadow::ShadowedScene;
+	//阴影map
 	osg::ref_ptr<osgShadow::SoftShadowMap > ssm = new osgShadow::SoftShadowMap;
-	// ssm->setAmbientBias(osg::Vec2(0.7,0.7));//0.5,0.5
 	float bias = ssm->getBias();
 	ssm->setBias(bias*2.0);
 	mShadowedSceneRoot->setShadowTechnique(ssm.get());
-
 	mShadowedSceneRoot->setReceivesShadowTraversalMask(ReceivesShadowTraversalMask);
 	mShadowedSceneRoot->setCastsShadowTraversalMask(CastsShadowTraversalMask);
 
-    // Load the Model from the model name
-    //mModel = osgDB::readNodeFile("cube-tex.obj");
-    // Optimize the model
-//     osgUtil::Optimizer optimizer;
-//     optimizer.optimize(mModel.get());
-//     optimizer.reset();
+	//载入汽车模型（obj格式）
+	osg::ref_ptr<osg::Node> car = osgDB::readNodeFile("car/car-n.obj");
+	if(car)
+		car->setNodeMask(CastsShadowTraversalMask);
+	//旋转和移动汽车
+	mTrans = new osg::MatrixTransform;
+	mTrans->setMatrix(osg::Matrix::rotate(osg::DegreesToRadians(90.0),-1,0,0)*osg::Matrix::translate(6, 2, -8));
+	mTrans->addChild( car.get() );
 
-    // Add the model to the scene
-    //mRoot->addChild(mModel.get());
-	//mRoot->addChild(osgDB::readNodeFile("floor.3ds"));
- 	//mRoot->addChild(createBox());
- 	//mRoot->addChild(createCylinder());
-	//mRoot->addChild(createSphere(1));
-	//mRoot->addChild(createLights());
-	//mRoot->addChild(createXXX());
+	//创建可移动的聚光灯
+	mTrans->addChild(createMoveLight());
+
+	mShadowedSceneRoot->addChild(mTrans.get());
+
+    //载入地板模型（3ds格式）
 	osg::ref_ptr<osg::Node> floor = osgDB::readNodeFile("floor.3ds");
 	if(floor)
 		floor->setNodeMask(ReceivesShadowTraversalMask);
 	mShadowedSceneRoot->addChild(floor.get());
 
+	
+	////创建球体
 	mShadowedSceneRoot->addChild(createSphere(1));
+	////创建圆锥体
+	mShadowedSceneRoot->addChild(createCone(1,3));
+	//创建菱形柱
 	mShadowedSceneRoot->addChild(createPrism());
+	//创建方柱
 	mShadowedSceneRoot->addChild(createBox());
-	mShadowedSceneRoot->addChild(createLights());
+	//创建圆柱
+	mShadowedSceneRoot->addChild(createCylinder());
+	//创建圆环
+	mShadowedSceneRoot->addChild(createTorusGeode(0.5, 2));
+	//创建点光源
+	mShadowedSceneRoot->addChild(createPointLight());
+	//创建方向光源
+	mShadowedSceneRoot->addChild(createDirectionalLight());
 
+	osg::StateSet * rootState = mShadowedSceneRoot->getOrCreateStateSet();
+	rootState->setMode(GL_LIGHTING,osg::StateAttribute::ON); 
+	rootState->setMode(GL_LIGHT0,osg::StateAttribute::ON); 
+	rootState->setMode(GL_LIGHT1,osg::StateAttribute::ON); 
+	rootState->setMode(GL_LIGHT2,osg::StateAttribute::ON); 
 }
-
+//事件和视口设置
 void cOSG::InitCameraConfig(void)
 {
     // Local Variable to hold window size data
@@ -358,11 +522,13 @@ void cOSG::InitCameraConfig(void)
     // Add the Camera Manipulator to the Viewer
     mViewer->setCameraManipulator(keyswitchManipulator.get());
 
-	
+	osg::Vec3 eye(0,50,0), center(0,5,0), up(0,0,1);
+	keyswitchManipulator->setHomePosition(eye,center,up);
 
     // Set the Scene Data
     //mViewer->setSceneData(mRoot.get());
-	mViewer->setSceneData(mShadowedSceneRoot.get());
+	mRoot->addChild(mShadowedSceneRoot);
+	mViewer->setSceneData(mRoot.get());
 
     // Realize the Viewer
     mViewer->realize();
@@ -373,10 +539,16 @@ void cOSG::InitCameraConfig(void)
     aspectRatio=double(traits->width)/double(traits->height);
     mViewer->getCamera()->setProjectionMatrixAsPerspective(fovy,aspectRatio,z1,z2);*/
 }
-
+//重置拾取后模型效果
 void cOSG::ResetModelColor()
 {
-
+	TraverseNodeVisitor resetNodeMaterial;
+	mShadowedSceneRoot->accept(resetNodeMaterial);
+}
+//控制car
+void cOSG::TransModel(osg::Matrix& m)
+{
+	mTrans->postMult(m);
 }
 void cOSG::PreFrameUpdate()
 {

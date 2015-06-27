@@ -136,13 +136,23 @@ void CMy3D_DemoView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
     }
 	else if (nChar == 'R')
 	{
-		mOSG->spotExpo *= 1.1;
-		mOSG->myLight1->setSpotCutoff(mOSG->spotExpo);
+		mOSG->ResetModelColor();
 	}
-	else if (nChar == 'T')
+	else if (nChar == VK_UP)
 	{
-		mOSG->spotExpo *= 0.9;
-		mOSG->myLight1->setSpotCutoff(mOSG->spotExpo);
+		mOSG->TransModel(osg::Matrix::translate(0, 0, 0.2));
+	}
+	else if (nChar == VK_DOWN)
+	{
+		mOSG->TransModel(osg::Matrix::translate(0, 0, -0.2));
+	}
+	else if (nChar == VK_RIGHT)
+	{
+		mOSG->TransModel(osg::Matrix::translate(-0.2, 0, 0));
+	}
+	else if (nChar == VK_LEFT)
+	{
+		mOSG->TransModel(osg::Matrix::translate(0.2, 0, 0));
 	}
 }
 

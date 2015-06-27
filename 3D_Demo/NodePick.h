@@ -13,7 +13,6 @@ public:
 	CPickHandler(osgViewer::Viewer * viewer):mViewer(viewer){};
 	virtual bool handle(const osgGA::GUIEventAdapter &ea, osgGA::GUIActionAdapter &&aa)
 	{
-		return false;
 		switch(ea.getEventType())
 		{
 			// PUSH, button down
@@ -23,7 +22,7 @@ public:
 			{
 				Pick(ea.getX(),ea.getY());
 			}
-			return true;
+			return false;
 		}
 		return false;
 	}
@@ -39,14 +38,16 @@ protected:
 			{
 				if (! hitr->nodePath.empty() && ! (hitr->nodePath.back()->getName().empty()))
 				{
-// 					osg::Geode* pNode = (osg::Geode*)(hitr->nodePath.back());
-// 					for(int i = 0; i < pNode->getNumDrawables(); i++)
-// 					{
-// 
-// 					}
-// 					osg::ref_ptr<osg::ShapeDrawable> lxq = (osg::ShapeDrawable*)((osg::Geode*)(hitr->nodePath.back()))->getDrawable(0);
-// 					lxq->setColor( osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f) ); 
-// 					break;
+					//将拾取到的模型的材质设置为红色
+					osg::Geode* pNode = (osg::Geode*)(hitr->nodePath.back());
+					// material
+					osg::ref_ptr<osg::Material> matirial = new osg::Material;
+					matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 0, 0, 1));
+					matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 0, 0, 1));
+					matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 0, 0, 1));
+					matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+					pNode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+					break;
 				}
 
 			}

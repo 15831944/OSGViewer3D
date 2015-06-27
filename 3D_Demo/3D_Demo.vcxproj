@@ -109,12 +109,15 @@
     <ClInclude Include="3D_Demo.h" />
     <ClInclude Include="3D_DemoDoc.h" />
     <ClInclude Include="3D_DemoView.h" />
+    <ClInclude Include="FindNodeVisitor.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="MFC_OSG.h" />
     <ClInclude Include="NodePick.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="Skybox.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="TraverseNodeVisitor.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="3D_Demo.cpp" />
@@ -122,6 +125,7 @@
     <ClCompile Include="3D_DemoView.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="MFC_OSG.cpp" />
+    <ClCompile Include="Skybox.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
