@@ -112,7 +112,7 @@
     <ClInclude Include="3D_Demo.h" />
     <ClInclude Include="3D_DemoDoc.h" />
     <ClInclude Include="3D_DemoView.h" />
-    <ClInclude Include="AxisDraw.h" />
+    <ClInclude Include="AxisBillBoardVisitor.h" />
     <ClInclude Include="FindNodeVisitor.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="MFC_OSG.h" />

@@ -6,6 +6,7 @@
 #include "FindNodeVisitor.h"
 #include "TraverseNodeVisitor.h"
 #include "Skybox.h"
+#include "AxisBillBoardVisitor.h"
 
 //阴影投射掩码
 static int ReceivesShadowTraversalMask = 0x1;
@@ -113,6 +114,42 @@ osg::Node* cOSG::createMoveLight()
 	lightGroup->addChild(lightS);
 
 	return lightGroup;
+}
+
+osg::Camera* cOSG::createHUD()
+{
+	// create a camera to set up the projection and model view matrices, and the subgraph to draw in the HUD
+	osg::Camera* camera = new osg::Camera;
+
+	camera->setViewport(0,0,200,200);
+	// set the projection matrix
+	camera->setProjectionMatrix(osg::Matrix::ortho(-1.5,1.5,-1.5,1.5,-50,100));
+
+	// set the view matrix    
+	camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+	//camera->setViewMatrix(osg::Matrix::identity());
+	osg::Vec3 eye(0,50,0), center(0,0,0), up(0,0,1);
+	camera->setViewMatrix(osg::Matrix::lookAt(eye,center,up));	
+
+	// only clear the depth buffer
+	camera->setClearMask(GL_DEPTH_BUFFER_BIT);
+
+	// draw subgraph after main camera view.
+	camera->setRenderOrder(osg::Camera::POST_RENDER);
+
+	// we don't want the camera to grab event focus from the viewers main camera(s).
+	camera->setAllowEventFocus(false);
+
+	{
+		osg::ref_ptr<osg::Node> axis = osgDB::readNodeFile("axes.osgt");
+
+		AxisBillBoardVisitor AxisTextVisitor;
+		axis->accept(AxisTextVisitor);
+		camera->addChild(axis);
+	}
+
+
+	return camera;
 }
 
 //创建quad
@@ -437,7 +474,6 @@ void cOSG::InitSceneGraph(void)
 	if(floor)
 		floor->setNodeMask(ReceivesShadowTraversalMask);
 	mShadowedSceneRoot->addChild(floor.get());
-
 	
 	////创建球体
 	mShadowedSceneRoot->addChild(createSphere(1));
@@ -528,6 +564,8 @@ void cOSG::InitCameraConfig(void)
     // Set the Scene Data
     //mViewer->setSceneData(mRoot.get());
 	mRoot->addChild(mShadowedSceneRoot);
+	mHudCamera = createHUD();
+	mRoot->addChild(mHudCamera.get());
 	mViewer->setSceneData(mRoot.get());
 
     // Realize the Viewer
@@ -552,7 +590,12 @@ void cOSG::TransModel(osg::Matrix& m)
 }
 void cOSG::PreFrameUpdate()
 {
-    // Due any preframe updates in this routine
+    //设置左下角轴箭头的变换矩阵
+	osg::Vec3 eye, center, up;
+	mViewer->getCamera()->getViewMatrix().getLookAt(eye,center,up);
+	eye = eye - center;
+	eye.normalize();
+	mHudCamera->setViewMatrix(osg::Matrix::lookAt(eye*50,osg::Vec3(0,0,0),up));
 }
 
 void cOSG::PostFrameUpdate()
