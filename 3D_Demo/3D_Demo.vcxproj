@@ -100,7 +100,6 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="ReadMe.txt" />
     <None Include="res\3D_Demo.ico" />
     <None Include="res\3D_DemoDoc.ico" />
     <None Include="res\My3D_Demo.rc2" />

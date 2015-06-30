@@ -56,6 +56,7 @@ public:
 	osg::MatrixTransform* createSphere(float radius);
 	osg::MatrixTransform* createTorusGeode(float MinorRadius, float MajorRadius);
 	osg::MatrixTransform* createPrism();
+	osg::MatrixTransform* createPlane(const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3);
 
 
 private:

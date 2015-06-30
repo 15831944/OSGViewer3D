@@ -100,10 +100,10 @@ osg::Node* cOSG::createMoveLight()
 	osg::Light* myLight = new osg::Light;
 	myLight->setLightNum(2);
 	myLight->setPosition(osg::Vec4(0,0,0,1.0f));
-	myLight->setAmbient(osg::Vec4(10.0f,0.0f,0.0f,1.0f));
-	myLight->setDiffuse(osg::Vec4(10.0f,0.0f,0.0f,1.0f));
-	myLight->setSpecular(osg::Vec4(1,0,0,1));
-	myLight->setSpotCutoff(50.0f);
+	myLight->setAmbient(osg::Vec4(100.0f,0.0f,0.0f,1.0f));
+	myLight->setDiffuse(osg::Vec4(100.0f,0.0f,0.0f,1.0f));
+	myLight->setSpecular(osg::Vec4(100,0,0,1));
+	myLight->setSpotCutoff(20.0f);
 	myLight->setSpotExponent(50.0f);
 	myLight->setDirection(osg::Vec3(0.0f,-1.0f,0.0f));
 
@@ -437,6 +437,96 @@ osg::MatrixTransform* cOSG::createPrism()
 	return trans.release();
 
 }  
+//创建地板（50*50）
+osg::MatrixTransform* cOSG::createPlane(const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3)
+{
+	osg::Vec3 dir1 = v2-v1;
+	osg::Vec3 dir2 = v3-v1;
+	// create a drawable for occluder.
+	osg::Geometry* geom = new osg::Geometry;
+
+	unsigned int noXSteps = 50;
+	unsigned int noYSteps = 50;
+
+	float ss = 0.2;
+
+	osg::Vec3Array* coords = new osg::Vec3Array;
+	coords->reserve(noXSteps*noYSteps);
+
+	osg::Vec2Array* tcoords = new osg::Vec2Array;
+	tcoords->reserve(noXSteps*noYSteps);
+
+	osg::Vec3 dx = (v2-v1)/((float)noXSteps-1.0f);
+	osg::Vec3 dy = (v3-v1)/((float)noYSteps-1.0f);
+
+	unsigned int row;
+	osg::Vec3 vRowStart = v1;
+	for(row=0;row<noYSteps;++row)
+	{
+		osg::Vec3 v = vRowStart;
+		for(unsigned int col=0;col<noXSteps;++col)        
+		{
+			coords->push_back(v);
+			v += dx;
+
+			tcoords->push_back(osg::Vec2(row*ss,col*ss));
+		}
+		vRowStart+=dy;
+	}
+
+	geom->setVertexArray(coords);
+	geom->setTexCoordArray(0,tcoords);
+
+
+	for(row=0;row<noYSteps-1;++row)
+	{
+		osg::DrawElementsUShort* quadstrip = new osg::DrawElementsUShort(osg::PrimitiveSet::QUAD_STRIP);
+		quadstrip->reserve(noXSteps*2);
+		for(unsigned int col=0;col<noXSteps;++col)        
+		{
+			quadstrip->push_back((row+1)*noXSteps+col);
+			quadstrip->push_back(row*noXSteps+col);
+		}   
+		geom->addPrimitiveSet(quadstrip);
+	}
+
+	// create the normals.    
+	//osgUtil::SmoothingVisitor::smooth(*geom);
+
+	osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+	geode->addDrawable(geom);
+
+	//texture
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("floor.jpg");
+	if (!image.get())
+		return NULL;
+
+	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D(image.get());
+	texture->setWrap(osg::Texture2D::WRAP_S,osg::Texture2D::REPEAT);
+	texture->setWrap(osg::Texture2D::WRAP_T,osg::Texture2D::REPEAT);
+
+	geode->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texture.get(), osg::StateAttribute::ON);
+
+	// material
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(0.5, 0.5, 0.5, 1.0));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(0.5, 0.5, 0.5, 1.0));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(0.5, 0.5, 0.5, 1.0));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	geode->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+
+
+	//设置矩阵，用来变换模型
+	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
+	trans->setMatrix(osg::Matrix::translate(-(v2 + v3)/2));
+	trans->addChild( geode.get() );
+
+	//geode->setName("Plane");//如果加上就会参与拾取
+	geode->setNodeMask(ReceivesShadowTraversalMask);
+
+	
+	return trans.release();
+}
 
 void cOSG::InitSceneGraph(void)
 {
@@ -470,10 +560,12 @@ void cOSG::InitSceneGraph(void)
 	mShadowedSceneRoot->addChild(mTrans.get());
 
     //载入地板模型（3ds格式）
-	osg::ref_ptr<osg::Node> floor = osgDB::readNodeFile("floor.3ds");
+	/*osg::ref_ptr<osg::Node> floor = osgDB::readNodeFile("floor.3ds");
 	if(floor)
 		floor->setNodeMask(ReceivesShadowTraversalMask);
-	mShadowedSceneRoot->addChild(floor.get());
+	mShadowedSceneRoot->addChild(floor.get());*/
+
+	mShadowedSceneRoot->addChild(createPlane(osg::Vec3(0,0,0),osg::Vec3(0,0,50),osg::Vec3(50,0,0)));
 	
 	////创建球体
 	mShadowedSceneRoot->addChild(createSphere(1));
