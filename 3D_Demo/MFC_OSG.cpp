@@ -7,6 +7,8 @@
 #include "TraverseNodeVisitor.h"
 #include "Skybox.h"
 
+using namespace osg;
+
 //阴影投射掩码
 static int ReceivesShadowTraversalMask = 0x1;
 static int CastsShadowTraversalMask = 0x2;
@@ -191,6 +193,48 @@ osg::MatrixTransform* cOSG::createCylinder()
 	geode->setNodeMask(CastsShadowTraversalMask);
 
 	geode->setName("Cylinder");
+	return trans.release();
+}
+
+//创建立方体
+osg::MatrixTransform* createGroupNode()
+{
+	osg::ref_ptr<osg::Image> image=osgDB::readImageFile("whitemetal.jpg");
+	if (!image.get())
+		return NULL;
+
+	osg::ref_ptr<osg::Texture2D> texture=new osg::Texture2D(image.get());
+	ref_ptr<Group> gg = new Group;
+	for (int i = 0; i < 10; i++)
+	{
+		osg::ref_ptr<osg::ShapeDrawable> doorShape =
+			new osg::ShapeDrawable( new osg::Box(osg::Vec3(0.0f, 0.0f, 0.0f), 2.0f, 2.0f, 2.0f) );
+
+		osg::ref_ptr<osg::Geode> geode = new osg::Geode;
+		geode->addDrawable( doorShape.get() );
+
+		//设置矩阵，用来变换模型
+		osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
+		trans->setMatrix(osg::Matrix::translate(0.0, i, -4.0));
+		trans->addChild(geode);
+		gg->addChild(trans.get());
+	}
+	
+
+	// material
+	osg::ref_ptr<osg::Material> matirial = new osg::Material;
+	matirial->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(1, 1, 1, 1));
+	matirial->setShininess(osg::Material::FRONT_AND_BACK, 64.0f);
+	gg->getOrCreateStateSet()->setAttributeAndModes(matirial.get(), osg::StateAttribute::ON);
+	gg->setNodeMask(CastsShadowTraversalMask);//阴影
+	gg->setName("grouplxq");
+
+	//设置矩阵，用来变换模型
+	osg::ref_ptr<osg::MatrixTransform> trans = new osg::MatrixTransform;
+	trans->setMatrix(osg::Matrix::translate(0.0, 0 , -4.0));
+	trans->addChild(gg);
 	return trans.release();
 }
 
@@ -451,6 +495,8 @@ void cOSG::InitSceneGraph(void)
 	mShadowedSceneRoot->addChild(createCylinder());
 	//创建圆环
 	mShadowedSceneRoot->addChild(createTorusGeode(0.5, 2));
+
+	mShadowedSceneRoot->addChild(createGroupNode());
 	//创建点光源
 	mShadowedSceneRoot->addChild(createPointLight());
 	//创建方向光源
@@ -528,6 +574,7 @@ void cOSG::InitCameraConfig(void)
     // Set the Scene Data
     //mViewer->setSceneData(mRoot.get());
 	mRoot->addChild(mShadowedSceneRoot);
+
 	mViewer->setSceneData(mRoot.get());
 
     // Realize the Viewer
