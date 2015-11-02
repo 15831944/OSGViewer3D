@@ -100,7 +100,6 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="ReadMe.txt" />
     <None Include="res\3D_Demo.ico" />
     <None Include="res\3D_DemoDoc.ico" />
     <None Include="res\My3D_Demo.rc2" />
@@ -112,7 +111,7 @@
     <ClInclude Include="3D_Demo.h" />
     <ClInclude Include="3D_DemoDoc.h" />
     <ClInclude Include="3D_DemoView.h" />
-    <ClInclude Include="AxisDraw.h" />
+    <ClInclude Include="AxisBillBoardVisitor.h" />
     <ClInclude Include="FindNodeVisitor.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="MFC_OSG.h" />

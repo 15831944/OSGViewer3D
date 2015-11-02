@@ -15,7 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ReadMe.txt" />
     <None Include="UserImages.bmp">
       <Filter>Resource Files</Filter>
     </None>
@@ -72,7 +71,7 @@
     <ClInclude Include="Skybox.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AxisDraw.h">
+    <ClInclude Include="AxisBillBoardVisitor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

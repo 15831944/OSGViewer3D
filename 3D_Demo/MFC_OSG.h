@@ -44,7 +44,7 @@ public:
 
     osgViewer::Viewer* getViewer() { return mViewer; }
 
-
+	osg::Camera* createHUD();
 	osg::Node* createPointLight();
 	osg::Node* createMoveLight();
 	osg::Node* createDirectionalLight();
@@ -56,6 +56,7 @@ public:
 	osg::MatrixTransform* createSphere(float radius);
 	osg::MatrixTransform* createTorusGeode(float MinorRadius, float MajorRadius);
 	osg::MatrixTransform* createPrism();
+	osg::MatrixTransform* createPlane(const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3);
 
 
 private:
@@ -68,6 +69,8 @@ private:
     osg::ref_ptr<osg::Node> mModel;
     osg::ref_ptr<osgGA::TrackballManipulator> trackball;
     osg::ref_ptr<osgGA::KeySwitchMatrixManipulator> keyswitchManipulator;
+
+	osg::ref_ptr<osg::Camera> mHudCamera;
 
 	osg::ref_ptr<osg::MatrixTransform> mTrans;
 
